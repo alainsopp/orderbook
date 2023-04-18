@@ -1,2 +1,2 @@
 # orderbook
-GUI for passing sell and buy order to a local order book.
+GUI for passing sell and buy orders to a local order book.
