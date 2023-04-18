@@ -17,6 +17,7 @@ market = 'MARKET'
 fieldnames = ['bidask','price','size']
 account_initial_currency_balance = 199
 account_initial_share_balance = 200
+
 class OrderBook(QMainWindow):
     def __init__(self, parent=None):
         super(OrderBook, self).__init__(parent)        
@@ -29,10 +30,12 @@ class OrderBook(QMainWindow):
         self.ui.label_share_account_balance.setText(str(self.account_share_balance))
         self.show()
 
+    # Loading data from source and updating GUI table content
     def updateContext(self):
         self.loadData()
         self.updateTable()
 
+    # Updating GUI table content
     def updateTable(self) -> None:
         rowindex = 0
         self.tableWidget.setRowCount(len(self.ui.data))
@@ -46,6 +49,7 @@ class OrderBook(QMainWindow):
             rowindex += 1
         self.tableWidget.sortItems(1, QtCore.Qt.AscendingOrder)
 
+    # Loading data from source to Orderbook object
     def loadData(self) -> None:
         self.ui.data = []
         with open(filename, 'r', newline='', encoding='utf-8') as f:
@@ -79,7 +83,7 @@ class OrderBook(QMainWindow):
         self.loadData()
         self.updateTable()
 
-    # Checking if the fields are properly filled.
+    # Checking if the form fields are properly filled.
     def isOrderSubmitable(self):
         bidask = self.ui.combobox_buysell.currentText()
         amount = self.ui.lineEdit_amount.text()
@@ -132,18 +136,30 @@ class OrderBook(QMainWindow):
 
         return amountAvailable >= int(amount)
     
+    # Getting all ask/bid offers row indexes from the source file
+    # TODO: fix indentation
     def getBidAskIndexes(self, bidask: str, price: str) -> list:
         bidaskIndexes = []
         i = 0
-        for row in self.ui.data:
-            if row['bidask'] == bidask and row['price'] == price:
-                bidaskIndexes.append(i)
-                i += 1
+
+        # We are looking for buying at the market lowest available price
+        if bidask == bid:
+            pass#or row in self.ui.data:
+                #if row['bidask'] == bidask and float(row['price']) <= float(price):
+		         #  	bidaskIndexes.append(i)
+		          # 	i += 1
+
+        # We are looking for selling at the market highest available price
+		#elif bidask == ask:
+		    #pass#for row in self.ui.data:
+		     #  	if row['bidask'] == bidask and float(row['price']) >= float(price):
+		      #     	bidaskIndexes.append(i)
+		       #    	i += 1
         return bidaskIndexes
 
     # removing the amount of order corresponding to amount parameter
     # and updates account balance.
-    def processOrder(self, bidask: str, price: str, amount: str)-> None:
+    def processLimitedOrder(self, bidask: str, price: str, amount: str)-> None:
         reliquat = int(amount)
         account_balance = self.account_currency_balance
         mirrorOrder = bid if bidask == ask else ask
@@ -187,33 +203,53 @@ class OrderBook(QMainWindow):
                         account_balance += float(self.ui.data[bidaskIndexes[i]]['size']) * float(self.ui.data[bidaskIndexes[i]]['price'])
                         del(self.ui.data[bidaskIndexes[i]])
                 i += 1
+
+        # TODO : Complete this sections with a similar business as the previous section
+        if bidask == ask:
+            print("Limited selling order.")
     
-            print('Error: Something went wrong when buying shares!')
-            print('reliquat :')
-            print(reliquat)
+    # Getting all ask/bid offers row indexes from the source file
+    def getBidAskIndexes(self, bidask: str) -> list:
+        bidaskIndexes = []
+        i = 0
+        for row in self.ui.data:
+            if row['bidask'] == bidask:
+            	bidaskIndexes.append(i)
+            	i += 1
+        return bidaskIndexes
+
+
+    def processMarketOrder(self, bidask: str, amount: str) -> None:
+        pass
 
     # Sells or buy shares if possible. Otherwise adds the new order to the book.
     def executeOrder(self) -> None:
         bidask =  self.ui.combobox_buysell.currentText()
-        bidask = ask if bidask == "SELL" else bid
+        bidask = ask if bidask == sell else bid
         price = self.ui.lineEdit_price.text()
-        amount = self.ui.lineEdit_amount.text()
+        amount = self.ui.lineEdit_amount.text()       
+
         if self.isOrderSubmitable():
+            d = datetime.datetime.now()
+            frmtd = d.strftime("%d/%m/%y %H:%M:%S")
+            msg = frmtd
             if self.isBalanceSufficient():
-                d = datetime.datetime.now()
-                frmtd = d.strftime("%d/%m/%y %H:%M:%S")
-                msg = frmtd + ": Operation succeed."
                 if self.isOrderSatisfiable(bidask, price, amount):
-                    self.processOrder(bidask, price, amount)        
+                    self.processLimitedOrder(bidask, price, amount)
+                    msg = msg + " Order executed successfully."
+                    self.label_info_content.setText(msg)
+                    self.label_info_content.setStyleSheet('color:green;')
                 else:
                     self.addOrder(bidask, price, amoun)
-                self.label_info_content.setText(msg)
-                self.label_info_content.setStyleSheet('color:green;')
+                    msg = msg + " New order placed successfully."
+                    self.label_info_content.setText(msg)
+                    self.label_info_content.setStyleSheet('color:green;')
             else:
+                msg = msg + " Insufficient balance."
                 self.label_info_content.setStyleSheet('color:red;')
-                self.label_info_content.setText("Balance is not sufficient to realize this operation.")
+                self.label_info_content.setText(msg)
         else:
-            self.label_info_content.setStyleSheet('color:red;')
+            self.label_info_content.setStyleSheet('color:yellow;')
             self.label_info_content.setText("Please, complete amount or Limit.")
 
 if __name__ == '__main__':
